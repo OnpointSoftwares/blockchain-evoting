@@ -1,267 +1,258 @@
 var phaseEnum; // for changing phases of voting
-App = {
-  web3Provider: null,
+var App = {
+  web3: null,
   contracts: {},
-  account:0x0,
+  account: '0x0',
 
-  init: async function() {
-    // Load pets.
-   
-    return await App.initWeb3();
-  },
-
-  initWeb3: async function() {
-    if (window.ethereum) {
-      try {
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        setAccounts(accounts);
-      } catch (error) {
-        if (error.code === 4001) {
-          // User rejected request
-        }
-      }
-    }
-
+  init: async function () {
+    await App.initWeb3();
     return App.initContract();
   },
 
-  initContract: function() {
-    
-    $.getJSON("Contest.json",function(contest){
-      App.contracts.Contest=TruffleContract(contest);
+  initWeb3: async function () {
+    if (window.ethereum) {
+      try {
+        // Request account access
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        App.account = accounts[0];
+      } catch (error) {
+        if (error.code === 4001) {
+          console.error('User rejected account access');
+        } else {
+          console.error('Error accessing account:', error.message);
+        }
+      }
+    } else {
+      console.error('Web3 provider not detected. Please install MetaMask or use a compatible browser.');
+    }
 
-      App.contracts.Contest.setProvider(web3.currentProvider);
+    App.web3 = new Web3(window.ethereum || 'http://localhost:8545');
+  },
 
-  
+  initContract: function () {
+    $.getJSON('Contest.json', function (contest) {
+      App.contracts.Contest = TruffleContract(contest);
+      App.contracts.Contest.setProvider(App.web3.currentProvider);
       return App.render();
     });
   },
 
-  render: function(){
-    
+  render: function () {
     var contestInstance;
-    var loader=$("#loader");
-    var content=$("#content"); 
+    var loader = $('#loader');
+    var content = $('#content');
     loader.show();
     content.hide();
     $("#after").hide();
 
-    web3.eth.getCoinbase(function(err,account){
-      if(err===null){
-        App.account=account;
-        $("#accountAddress").html("Your account: "+account);
+    App.web3.eth.getCoinbase(function (err, account) {
+      if (err === null) {
+        App.account = account;
+        $("#accountAddress").html("Your account: " + account);
       }
     });
 
-    
+    // Fetching contestants to front end from blockchain code
+    App.contracts.Contest.deployed().then(async function (instance) {
+      contestInstance = instance;
+      var contestantsCount = await contestInstance.contestantsCount();
 
-    // ------------- fetching candidates to front end from blockchain code-------------
-    App.contracts.Contest.deployed().then(function(instance){
-      contestInstance=instance;
-      return contestInstance.contestantsCount();
-    }).then(function(contestantsCount){
-      // var contestantsResults=$("#contestantsResults");
-      // contestantsResults.empty();
-
-      // var contestantSelect=$("#contestantSelect");
-      // contestantSelect.empty();
-
-      // for(var i=1; i<=contestantsCount; i++){
-      //   contestInstance.contestants(i).then(function(contestant){
-      //     var id=contestant[0];
-      //     var name=contestant[1];
-      //     var voteCount=contestant[2];
-      //     var fetchedParty=contestant[3];
-      //     var fetchedAge = contestant[4];
-      //     var fetchedQualification = contestant[5]
-
-      //     var contestantTemplate="<tr><th>"+id+"</th><td>"+name+"</td><td>"+fetchedAge+"</td><td>"+fetchedParty+"</td><td>"+fetchedQualification+"</td><td>"+voteCount+"</td></tr>";
-      //     contestantsResults.append(contestantTemplate)  ;
-
-      //     var contestantOption="<option value='"+id+"'>"+name+"</option>";
-      //     contestantSelect.append(contestantOption);
-
-      var contestantsResults=$("#test");
+      var contestantsResults = $("#test");
       contestantsResults.empty();
-      var contestantsResultsAdmin=$("#contestantsResultsAdmin");
+
+      var contestantsResultsAdmin = $("#contestantsResultsAdmin");
       contestantsResultsAdmin.empty();
 
-      var contestantSelect=$("#contestantSelect");
+      var contestantSelect = $("#contestantSelect");
       contestantSelect.empty();
 
-      for(var i=1; i<=contestantsCount; i++){
-        contestInstance.contestants(i).then(function(contestant){
-          var id=contestant[0];
-          var name=contestant[1];
-          var voteCount=contestant[2];
-          var fetchedParty=contestant[3];
-          var fetchedAge = contestant[4];
-          var fetchedQualification = contestant[5]
+      for (var i = 1; i <= contestantsCount; i++) {
+        var contestant = await contestInstance.contestants(i);
+        var id = contestant[0];
+        var name = contestant[1];
+        var voteCount = contestant[2];
+        var fetchedParty = contestant[3];
+        var fetchedAge = contestant[4];
+        var fetchedQualification = contestant[5];
 
-          var contestantTemplate="<div class='card' style='width: 15rem; margin: 1rem;'><img class='card-img-top'src='../img/Sample_User_Icon.png' alt=''><div class='card-body text-center'><h4 class='card-title'>" 
-          + name + "</h4>"+
-          "<button type='button' class='btn btn-info' data-toggle='modal' data-target='#modal"+id+"'>Click Here to Vote</button>" 
-          + "<div class='modal fade' id='modal"+id+"' tabindex='-1' role='dialog' aria-labelledby='exampleModalCenterTitle' aria-hidden='true'>"
+        var contestantTemplate = "<div class='card' style='width: 15rem; margin: 1rem;'><img class='card-img-top'src='../img/Sample_User_Icon.png' alt=''><div class='card-body text-center'><h4 class='card-title'>"
+          + name + "</h4>" +
+          "<button type='button' class='btn btn-info' data-toggle='modal' data-target='#modal" + id + "'>Click Here to Vote</button>"
+          + "<div class='modal fade' id='modal" + id + "' tabindex='-1' role='dialog' aria-labelledby='exampleModalCenterTitle' aria-hidden='true'>"
           + "<div class='modal-dialog modal-dialog-centered' role='document'>"
           + "<div class='modal-content'>"
           + "<div class='modal-header'>"
           + "<h5 class='modal-title' id='exampleModalLongTitle'> <b>" + name + "</b></h5>"
           + "<button type='button' class='close' data-dismiss='modal' aria-label='Close'><span aria-hidden='true'>&times;</span></button>"
           + "</div>"
-          + "<div class='modal-body'> <b> Party : " + fetchedParty +"<br>Age : " + fetchedAge + "<br>Qualification : " + fetchedQualification + "<br></b></div>"
+          + "<div class='modal-body'> <b> Party : " + fetchedParty + "<br>Age : " + fetchedAge + "<br>Qualification : " + fetchedQualification + "<br></b></div>"
           + "<div class='modal-footer'>"
-          + "<button class='btn btn-info' onClick='App.castVote("+id.toString()+")'>VOTE</button>"
-          +"<button type='button' class='btn btn-info' data-dismiss='modal'>Close</button></div>"
+          + "<button class='btn btn-info' onClick='App.castVote(" + id.toString() + ")'>VOTE</button>"
+          + "<button type='button' class='btn btn-info' data-dismiss='modal'>Close</button></div>"
           + "</div></div></div>"
           + "</div></div>";
-          contestantsResults.append(contestantTemplate)  ;
+        contestantsResults.append(contestantTemplate);
 
-          var contestantOption="<option style='padding: auto;' value='"+id+"'>"+name+"</option>";
-          contestantSelect.append(contestantOption);
+        var contestantOption = "<option style='padding: auto;' value='" + id + "'>" + name + "</option>";
+        contestantSelect.append(contestantOption);
 
-          var contestantTemplateAdmin="<tr><th>"+id+"</th><td>"+name+"</td><td>"+fetchedAge+"</td><td>"+fetchedParty+"</td><td>"+fetchedQualification+"</td><td>"+voteCount+"</td></tr>";
-          contestantsResultsAdmin.append(contestantTemplateAdmin)  ;
-        }); 
+        var contestantTemplateAdmin = "<tr><th>" + id + "</th><td>" + name + "</td><td>" + fetchedAge + "</td><td>" + fetchedParty + "</td><td>" + fetchedQualification + "</td><td>" + voteCount + "</td></tr>";
+        contestantsResultsAdmin.append(contestantTemplateAdmin);
       }
+
       loader.hide();
       content.show();
-    }).catch(function(error){
+    }).catch(function (error) {
       console.warn(error);
     });
 
-    // ------------- fetching current phase code -------------
-    App.contracts.Contest.deployed().then(function (instance){
+    // Fetching current phase code
+    App.contracts.Contest.deployed().then(function (instance) {
       return instance.state();
-    }).then(function(state){
+    }).then(function (state) {
       var fetchedState;
       var fetchedStateAdmin;
       phaseEnum = state.toString();
-      if(state == 0){
-        fetchedState = "Registration phase is on , go register yourself to vote !!";
+      if (state == 0) {
+        fetchedState = "Registration phase is on, go register yourself to vote !!";
         fetchedStateAdmin = "Registration";
-      }else if(state == 1){
+      } else if (state == 1) {
         fetchedState = "Voting is now live !!!";
         fetchedStateAdmin = "Voting";
-      }else {
+      } else {
         fetchedState = "Voting is now over !!!";
         fetchedStateAdmin = "Election over";
       }
-      
-      var currentPhase = $("#currentPhase");//for user
+
+      var currentPhase = $("#currentPhase"); // for user
       currentPhase.empty();
-      var currentPhaseAdmin = $("#currentPhaseAdmin");//for admin
+      var currentPhaseAdmin = $("#currentPhaseAdmin"); // for admin
       currentPhaseAdmin.empty();
-      var phaseTemplate = "<h1>"+fetchedState+"</h1>";
-      var phaseTemplateAdmin = "<h3> Current Phase : "+fetchedStateAdmin+"</h3>";
+      var phaseTemplate = "<h1>" + fetchedState + "</h1>";
+      var phaseTemplateAdmin = "<h3> Current Phase : " + fetchedStateAdmin + "</h3>";
       currentPhase.append(phaseTemplate);
       currentPhaseAdmin.append(phaseTemplateAdmin);
-    }).catch(function(err){
+    }).catch(function (err) {
       console.error(err);
-    })
+    });
 
-    // ------------- showing result -------------
-    App.contracts.Contest.deployed().then(function (instance){
+    // Showing result
+    App.contracts.Contest.deployed().then(function (instance) {
       return instance.state();
-    }).then(function(state){
+    }).then(function (state) {
       var result = $('#Results');
-      if(state == 2){
+      if (state == 2) {
         $("#not").hide();
-        contestInstance.contestantsCount().then(function(contestantsCount){
-          for(var i=1; i<=contestantsCount; i++){
-            contestInstance.contestants(i).then(function(contestant){
-              var id=contestant[0];
-              var name=contestant[1];
-              var voteCount=contestant[2];
-              var fetchedParty=contestant[3];
+        contestInstance.contestantsCount().then(function (contestantsCount) {
+          for (var i = 1; i <= contestantsCount; i++) {
+            contestInstance.contestants(i).then(function (contestant) {
+              var id = contestant[0];
+              var name = contestant[1];
+              var voteCount = contestant[2];
+              var fetchedParty = contestant[3];
               var fetchedAge = contestant[4];
               var fetchedQualification = contestant[5];
 
-              var resultTemplate="<tr><th>"+id+"</th><td>"+name+"</td><td>"+fetchedAge+"</td><td>"+fetchedParty+"</td><td>"+fetchedQualification+"</td><td>"+voteCount+"</td></tr>";
-              result.append(resultTemplate)  ;
+              var resultTemplate = "<tr><th>" + id + "</th><td>" + name + "</td><td>" + fetchedAge + "</td><td>" + fetchedParty + "</td><td>" + fetchedQualification + "</td><td>" + voteCount + "</td></tr>";
+              result.append(resultTemplate);
             });
           }
         })
-         
+
       } else {
         $("#renderTable").hide();
       }
-    }).catch(function(err){
+    }).catch(function (err) {
       console.error(err);
     })
   },
 
-  
-  
-
-  // ------------- voting code -------------
-  castVote: function(id){
-    
-    var contestantId=id;
-    App.contracts.Contest.deployed().then(function (instance){
-      return instance.vote(contestantId,{from: App.account});
-    }).then(function(result){
-      // $("#test").hide();
-      // $("#after").show();
-    }).catch(function(err){
+  // Voting code
+  castVote: function (id) {
+    var contestantId = id;
+    App.contracts.Contest.deployed().then(function (instance) {
+      return instance.vote(contestantId, { from: App.account });
+    }).then(function (result) {
+      // Handle vote success if needed
+    }).catch(function (err) {
       console.error(err);
     })
-
   },
 
-  // ------------- adding candidate code -------------
-  addCandidate: function(){
+  // Adding candidate code
+  addCandidate: function () {
     $("#loader").hide();
-    var name=$('#name').val();
+    var name = $('#name').val();
     var age = $('#age').val();
     var party = $('#party').val();
     var qualification = $('#qualification').val();
-    
-    App.contracts.Contest.deployed().then(function(instance){
-      return instance.addContestant(name,party,age,qualification);
-    }).then(function(result){
+
+    App.contracts.Contest.deployed().then(function (instance) {
+      return instance.addContestant(name, party, age, qualification, { from: App.account });
+    }).then(function (result) {
+      console.log(result);
       $("#loader").show();
       $('#name').val('');
       $('#age').val('');
       $('#party').val('');
       $('#qualification').val('');
-    }).catch(function(err){
+    }).catch(function (err) {
       console.error(err);
     })
   },
 
-  // ------------- changing phase code -------------
-  
-  changeState: function(){
-    phaseEnum ++;
-    // console.log(phaseEnum);
-    App.contracts.Contest.deployed().then(function(instance){
-      return instance.changeState(phaseEnum);
-    }).then(function(result){
+  // Changing phase code
+  changeState: function () {
+    phaseEnum++;
+    App.contracts.Contest.deployed().then(function (instance) {
+      return instance.changeState(phaseEnum, { from: App.account });
+    }).then(function (result) {
       $("#content").hide();
       $("#loader").show();
-    }).catch(function(err){
+    }).catch(function (err) {
       console.error(err);
     })
   },
 
-  // ------------- registering voter code -------------
-  registerVoter: function(){
-    var add=$('#accadd').val();
-    App.contracts.Contest.deployed().then(function(instance){
-      return instance.voterRegisteration(add);
-    }).then(function(result){
-      $("#content").hide();
-      $("#loader").show();
-    }).catch(function(err){
-      console.error(err);
-    })
-  }
+  // Registering voter code
+  registerVoter: function () {
+    var voterAddress = $('#accadd').val();
 
-};
+    App.contracts.Contest.deployed().then(function (instance) {
+        // Call the voterRegistration function on the smart contract
+        return instance.voterRegistration(voterAddress, { from: App.account });
+    }).then(function (result) {
+      alert(result);
+        // Display a transaction hash as an alert
+        alert('Transaction Hash: ' + result.tx);
 
+        // Since the transaction is asynchronous, you might want to wait for its confirmation
+        // before updating the UI or taking further actions.
 
-$(function() {
-  $(window).load(function() {
-    App.init();
-  });
+        // Optional: You can check for transaction confirmation using a library like web3.js
+        web3.eth.getTransactionReceipt(result.tx, function (err, receipt) {
+           if (err) {
+              console.error('Error getting transaction receipt:', err);
+              alert(err);
+           } else if (receipt && receipt.status === '0x1') {
+              console.log('Transaction confirmed!');
+             // Handle success, update UI, etc.
+          $("#content").hide();
+             $("#loader").show();
+         } else {
+        //         console.error('Transaction failed:', receipt);
+        //         // Handle transaction failure
+            }
+         });
+    }).catch(function (err) {
+        // Handle errors
+        console.error('Error registering voter:', err);
+    });
+}
+}
+
+$(function () {
+    $(window).load(function () {
+        App.init();
+    });
 });

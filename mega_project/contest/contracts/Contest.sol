@@ -57,13 +57,23 @@ contract Contest{
 		voters[user].isRegistered=true;
 	}
 
-	function vote(uint _contestantId) public validState(PHASE.voting){
-        
-		require(voters[msg.sender].isRegistered);
-		require(!voters[msg.sender].hasVoted);
-        require(_contestantId > 0 && _contestantId<=contestantsCount);
-		contestants[_contestantId].voteCount++;
-		voters[msg.sender].hasVoted=true;
-		voters[msg.sender].vote=_contestantId;
-	}
+	function vote(uint _contestantId) public validState(PHASE.voting) returns (bool success) {
+    require(!voters[msg.sender].hasVoted, "Voter has already voted");
+    require(_contestantId > 0 && _contestantId <= contestantsCount, "Invalid contestant ID");
+
+    uint gasStart = gasleft(); // Record the starting gas value
+
+    contestants[_contestantId].voteCount++;
+    voters[msg.sender].hasVoted = true;
+    voters[msg.sender].vote = _contestantId;
+
+    uint gasSpent = gasStart - gasleft(); // Calculate gas spent
+
+    // You can log or store the gas spent for analysis
+    emit GasSpent(msg.sender, gasSpent);
+
+    return true;
+}
+
+event GasSpent(address indexed voter, uint gasSpent);
 }

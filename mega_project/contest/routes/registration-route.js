@@ -41,17 +41,17 @@ router.post('/register', function(req, res, next) {
         // Now, insert data into aadhar_info table
         var aadharInfoData = {
           Aadharno: randoNumber,
-          Name: inputData.first_name + ' ' + inputData.last_name,
-          Dob: inputData.dob,
+          Name:req.body.first_name,
+          Dob: req.body.dob,
           Email: inputData.email_address,
-          Is_registered: true
+          Is_registered: 'No'
         };
 
         var sqlInsertAadharInfo = 'INSERT INTO aadhar_info SET ?';
         db.query(sqlInsertAadharInfo, aadharInfoData, function(err, data) {
           if (err) throw err;
 
-          var msg = 'You are successfully registered';
+          var msg = 'You are successfully registered and your registration number is '+randoNumber;
           res.render('registration-form.ejs', { alertMsg: msg });
         });
       });
