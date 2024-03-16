@@ -945,12 +945,12 @@
     "1710250875151": {
       "events": {},
       "links": {},
-      "address": "0xb4Bb80a8d243f827fa7f5c3e4aF81bF264D6D857",
-      "transactionHash": "0x6d4e0a60852fae9dcd5196daef1bf8d8025635ecf18f5ab19a5ddd2a0ff93e85"
+      "address": "0x63DF2dee08B9e7aab6f59B00eC5a4e3ed768E327",
+      "transactionHash": "0xd3ba5cbcda7c269e48071ed27799feb4dfb52993a93876b050057e3dc6522c74"
     }
   },
   "schemaVersion": "3.4.16",
-  "updatedAt": "2024-03-12T14:48:27.952Z",
+  "updatedAt": "2024-03-12T15:10:24.461Z",
   "networkType": "ethereum",
   "devdoc": {
     "methods": {}
